@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landon Middle School Coding Club</title>
+  <style>
+    :root {
+      --bg: #0a0e0a;
+      --panel: #111812;
+      --border: #1b2e1e;
+      --green: #00ff66;
+      --green-dark: #008837;
+      --text: #e0ece1;
+      --muted: #5e7a62;
+      --danger: #ff4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', monospace, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+
+    #auth-screen, #loading-screen {
+      width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 32px; text-align: center; box-shadow: 0 0 30px rgba(0, 255, 102, 0.08);
+    }
+    .logo-container { margin-bottom: 20px; display: flex; justify-content: center; }
+    .logo-svg { width: 80px; height: 80px; filter: drop-shadow(0 0 10px var(--green)); }
+    h1 { font-size: 1.3rem; letter-spacing: 2px; color: var(--green); margin-bottom: 6px; }
+    p.subtitle { font-size: 0.8rem; color: var(--muted); margin-bottom: 24px; }
+
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 100%; padding: 12px 16px; background: #050805; border: 1px solid var(--border);
+      border-radius: 6px; color: #fff; font-size: 0.95rem; margin-bottom: 16px; outline: none;
+    }
+    input:focus { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,102,0.2); }
+
+    button.btn-primary {
+      width: 100%; padding: 12px; background: var(--green-dark); color: #fff; border: none;
+      border-radius: 6px; font-weight: bold; cursor: pointer; letter-spacing: 1px; transition: 0.2s;
+    }
+    button.btn-primary:hover { background: var(--green); color: #000; box-shadow: 0 0 15px var(--green); }
+    button.btn-danger {
+      width: 100%; padding: 12px; background: #880000; color: #fff; border: none;
+      border-radius: 6px; font-weight: bold; cursor: pointer; letter-spacing: 1px; transition: 0.2s;
+    }
+    button.btn-danger:hover { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+
+    .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 12px; display: none; }
+
+    #loading-screen { display: none; }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid var(--border); border-top: 3px solid var(--green);
+      border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #app-screen { display: none; width: 100vw; height: 100vh; grid-template-columns: 260px 1fr; background: var(--bg); }
+
+    .sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: bold; color: var(--green); }
+    .sidebar-brand svg { width: 28px; height: 28px; }
+
+    .search-box { padding: 12px 16px; border-bottom: 1px solid var(--border); position: relative; }
+    .autocomplete-list {
+      position: absolute; top: 48px; left: 16px; right: 16px; background: var(--panel);
+      border: 1px solid var(--green); border-radius: 6px; max-height: 180px; overflow-y: auto;
+      z-index: 100; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+    }
+    .autocomplete-item { padding: 10px; font-size: 0.85rem; cursor: pointer; display: flex; justify-content: space-between; }
+    .autocomplete-item:hover, .autocomplete-item.selected { background: var(--green-dark); color: #fff; }
+
+    .section-title { font-size: 0.7rem; font-weight: bold; color: var(--muted); padding: 12px 16px 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .chat-list { flex: 1; overflow-y: auto; }
+    .chat-item { padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; cursor: pointer; transition: 0.15s; border-left: 3px solid transparent; }
+    .chat-item:hover { background: rgba(0,255,102,0.05); }
+    .chat-item.active { background: #08140a; border-left-color: var(--green); color: var(--green); font-weight: bold; }
+
+    .user-footer { padding: 16px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .icon-btn { background: none; border: none; color: var(--green); cursor: pointer; font-size: 1.1rem; }
+
+    .chat-area { display: flex; flex-direction: column; height: 100vh; position: relative; }
+    .chat-header { padding: 16px 24px; border-bottom: 1px solid var(--border); font-weight: bold; color: var(--green); background: var(--panel); display: flex; justify-content: space-between; align-items: center; }
+    .messages-container { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .msg { display: flex; flex-direction: column; max-width: 75%; width: fit-content; transition: 0.3s; }
+    .msg.msg-other { align-self: flex-start; }
+    .msg.msg-other .msg-body { background: var(--panel); border: 1px solid var(--border); border-top-left-radius: 2px; }
+    .msg.msg-other .msg-header { justify-content: flex-start; }
+
+    .msg.msg-own { align-self: flex-end; }
+    .msg.msg-own .msg-body { background: #0d3818; border: 1px solid #1a5e2c; color: #ffffff; border-top-right-radius: 2px; }
+    .msg.msg-own .msg-header { justify-content: flex-end; }
+
+    .msg-header { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; display: flex; gap: 8px; align-items: center; }
+    .msg-username { color: var(--green); font-weight: bold; }
+    .msg-body { padding: 10px 14px; border-radius: 12px; font-size: 0.95rem; word-break: break-word; position: relative; }
+
+    .action-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; font-size: 0.75rem; }
+    .action-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+    .action-btn:hover { color: var(--green); background: rgba(0,255,102,0.1); }
+
+    .reply-quote { background: rgba(0,0,0,0.3); border-left: 3px solid var(--green); padding: 6px 10px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+    .reply-quote:hover { background: rgba(0,255,102,0.1); }
+    .reply-quote-user { color: var(--green); font-weight: bold; margin-bottom: 2px; }
+    .reply-quote-text { color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .reactions-bar { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+    .reaction-pill { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 2px 8px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; color: var(--text); }
+    .reaction-pill.reacted { background: rgba(0,255,102,0.15); border-color: var(--green); color: var(--green); }
+    .reaction-pill:hover { border-color: var(--green); }
+
+    #reply-preview-bar { display: none; padding: 8px 16px; background: var(--panel); border-top: 1px solid var(--border); align-items: center; justify-content: space-between; font-size: 0.85rem; }
+
+    .file-attachment { margin-top: 8px; padding: 8px 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+    .file-attachment a { color: var(--green); text-decoration: none; }
+
+    .input-bar-container { display: flex; flex-direction: column; background: var(--panel); border-top: 1px solid var(--border); }
+    .input-bar { padding: 12px 24px; display: flex; gap: 12px; align-items: center; }
+    .file-btn { background: #050805; border: 1px solid var(--border); color: var(--green); padding: 10px 14px; border-radius: 6px; cursor: pointer; }
+
+    .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; }
+    .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 0 25px rgba(0,255,102,0.1); }
+    .modal-header { font-size: 1.1rem; font-weight: bold; margin-bottom: 16px; color: var(--green); display: flex; justify-content: space-between; }
+    .close-modal { cursor: pointer; color: var(--muted); }
+
+    .admin-list-item { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; background: #050805; }
+
+    .highlight-msg { animation: flashMsg 1.5s ease; }
+    @keyframes flashMsg { 0% { background-color: rgba(0,255,102,0.4); } 100% { background-color: transparent; } }
+  </style>
+</head>
+<body>
+
+  <div id="auth-screen">
+    <div class="logo-container">
+      <svg class="logo-svg" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#00ff66" stroke-width="3" />
+        <text x="50" y="55" font-size="28" fill="#00ff66" text-anchor="middle" font-family="monospace">&lt;/&gt;</text>
+      </svg>
+    </div>
+    <h1>LANDON CODING CLUB</h1>
+
+    <div id="step-email-box">
+      <p class="subtitle">Enter your Landon email to enter chat</p>
+      <form onsubmit="event.preventDefault(); submitEmail();">
+        <input type="email" id="email-input" name="username" autocomplete="username" placeholder="username@landon.net" required />
+        <button type="submit" class="btn-primary">CONTINUE</button>
+      </form>
+    </div>
+
+    <div id="step-setup-box" style="display:none;">
+      <p class="subtitle">First time here! Create and confirm your passcode:</p>
+      <form onsubmit="event.preventDefault(); submitPasscode(true);">
+        <input type="password" id="setup-passcode" name="password" autocomplete="new-password" placeholder="Create Passcode" required />
+        <input type="password" id="setup-passcode-confirm" autocomplete="new-password" placeholder="Confirm Passcode" required />
+        <button type="submit" class="btn-primary">SAVE PASSCODE & CONTINUE</button>
+      </form>
+    </div>
+
+    <div id="step-passcode-box" style="display:none;">
+      <p class="subtitle">Welcome back! Enter your passcode:</p>
+      <form onsubmit="event.preventDefault(); submitPasscode(false);">
+        <input type="password" id="login-passcode" name="password" autocomplete="current-password" placeholder="Enter Passcode" required />
+        <button type="submit" class="btn-primary">LOG IN</button>
+      </form>
+    </div>
+
+    <div id="auth-error" class="error-msg"></div>
+  </div>
+
+  <div id="loading-screen">
+    <div class="logo-container">
+      <svg class="logo-svg" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#00ff66" stroke-width="3" />
+        <text x="50" y="55" font-size="28" fill="#00ff66" text-anchor="middle" font-family="monospace">&lt;/&gt;</text>
+      </svg>
+    </div>
+    <h2 style="color: var(--green); font-size: 1.1rem; margin-top: 10px;">Logging in with Landon School...</h2>
+    <div class="spinner"></div>
+  </div>
+
+  <div id="app-screen">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00ff66" stroke-width="4" />
+            <text x="50" y="58" font-size="30" fill="#00ff66" text-anchor="middle" font-family="monospace">&lt;/&gt;</text>
+          </svg>
+          <span>LANDON CODING CLUB</span>
+        </div>
+        <button class="icon-btn" onclick="openCreateGroupModal()" title="Create Group">+</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="user-search" placeholder="Search people (e.g. kri)..." oninput="handleUserSearch()" onkeydown="handleSearchKeyDown(event)" autocomplete="off" />
+        <div class="autocomplete-list" id="autocomplete-list"></div>
+      </div>
+
+      <div class="chat-list">
+        <div class="section-title">Channels</div>
+        <div class="chat-item active" id="item-general" onclick="selectTarget('channel', 'general', '# general')"># general</div>
+
+        <div class="section-title">Groups</div>
+        <div id="groups-list"></div>
+
+        <div class="section-title">Direct Messages</div>
+        <div id="dms-list"></div>
+      </div>
+
+      <div class="user-footer">
+        <div>User: <strong id="current-user-display" style="color: var(--green);"></strong></div>
+        <div style="display:flex; gap:8px;">
+          <button class="icon-btn" onclick="enableNotificationsWithTest()" title="Enable & Test Notifications">🔔</button>
+          <button class="icon-btn" onclick="openChangePassModal()" title="Change Passcode">🔒</button>
+          <button class="icon-btn" id="admin-gear-btn" style="display:none;" onclick="openAdminModal()" title="Admin Dashboard">⚙️</button>
+          <button class="icon-btn" onclick="logout()" title="Log Out">🚪</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-area">
+      <div class="chat-header">
+        <span id="chat-title"># general</span>
+        <button class="btn-primary" id="group-options-btn" style="display:none; width:auto; padding:6px 12px; font-size:0.8rem;" onclick="openGroupManageModal()">👥 Group Options</button>
+      </div>
+      <div class="messages-container" id="messages-container"></div>
+
+      <div class="input-bar-container">
+        <div id="reply-preview-bar">
+          <div>Replying to <strong id="replying-to-user" style="color:var(--green);"></strong>: <span id="replying-to-snippet" style="color:var(--muted);"></span></div>
+          <button class="action-btn" onclick="cancelReply()" style="font-size:1rem; font-weight:bold;">✕</button>
+        </div>
+        <div class="input-bar">
+          <label class="file-btn" title="Attach file">
+            📎
+            <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(event)">
+          </label>
+          <input type="text" id="msg-input" placeholder="Type a message..." style="margin-bottom:0;" onkeypress="if(event.key==='Enter') sendMsg()" />
+          <button class="btn-primary" style="width: 100px;" onclick="sendMsg()">SEND</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="group-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Create New Group</span>
+        <span class="close-modal" onclick="closeModal('group-modal')">✕</span>
+      </div>
+      <input type="text" id="new-group-name" placeholder="Group Name (e.g., Web Team)" />
+      <button class="btn-primary" onclick="submitCreateGroup()">CREATE GROUP</button>
+    </div>
+  </div>
+
+  <div class="modal" id="manage-group-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Manage Group</span>
+        <span class="close-modal" onclick="closeModal('manage-group-modal')">✕</span>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">Rename Group</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="rename-group-input" placeholder="New Group Name" style="margin:0;" />
+          <button class="btn-primary" style="width: 100px;" onclick="submitRenameGroup()">RENAME</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px;">Add Member by Email</label>
+        <div style="display:flex; gap:8px;">
+          <input type="email" id="add-member-email" placeholder="user@landon.net" style="margin:0;" />
+          <button class="btn-primary" style="width: 100px;" onclick="submitAddGroupMember()">ADD</button>
+        </div>
+      </div>
+
+      <h4 style="font-size: 0.85rem; color: var(--green); margin-bottom: 8px;">Group Members</h4>
+      <div id="group-members-list" style="font-size: 0.85rem; margin-bottom: 20px;"></div>
+
+      <div id="delete-group-container" style="display:none; border-top: 1px solid var(--border); padding-top: 16px;">
+        <button class="btn-danger" onclick="submitDeleteGroup()">🗑️ DELETE GROUP</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="change-pass-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>🔒 Change Passcode</span>
+        <span class="close-modal" onclick="closeModal('change-pass-modal')">✕</span>
+      </div>
+      <form onsubmit="event.preventDefault(); submitChangePass();">
+        <input type="password" id="current-pass-input" placeholder="Current Passcode" required />
+        <input type="password" id="new-pass-input" placeholder="New Passcode" required />
+        <button type="submit" class="btn-primary">UPDATE PASSCODE</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="admin-modal">
+    <div class="modal-content" style="max-width: 650px; max-height: 85vh; overflow-y: auto;">
+      <div class="modal-header">
+        <span>⚙️ Nicole Favret - Admin Dashboard</span>
+        <span class="close-modal" onclick="closeModal('admin-modal')">✕</span>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h3 style="font-size: 0.85rem; color: var(--green); margin-bottom: 8px;">Reset User Passcode</h3>
+        <div style="display: flex; gap: 8px;">
+          <input type="email" id="reset-user-email" placeholder="user@landon.net" style="margin:0;" />
+          <input type="password" id="reset-user-pass" placeholder="New Passcode" style="margin:0;" />
+          <button class="btn-primary" style="width: 120px;" onclick="submitAdminResetPass()">RESET</button>
+        </div>
+      </div>
+
+      <h3 style="font-size: 0.85rem; color: var(--green); margin-bottom: 8px;">All Registered Users</h3>
+      <div id="admin-users-list" style="font-size: 0.85rem; margin-bottom: 20px;"></div>
+
+      <h3 style="font-size: 0.85rem; color: var(--green); margin-bottom: 8px;">All Groups</h3>
+      <div id="admin-groups-list" style="font-size: 0.85rem; margin-bottom: 20px;"></div>
+
+      <h3 style="font-size: 0.85rem; color: var(--green); margin-bottom: 8px;">All DM Conversations</h3>
+      <div id="admin-dms-list" style="font-size: 0.85rem;"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="admin-chat-modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <span id="admin-viewer-title">Read-Only Viewer</span>
+        <span class="close-modal" onclick="closeModal('admin-chat-modal')">✕</span>
+      </div>
+      <div id="admin-chat-body" style="max-height: 400px; overflow-y: auto; padding: 12px; background: #050805; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 12px;"></div>
+    </div>
+  </div>
+
+  <script>
+    let tempEmail = '';
+    let currentUser = null;
+    let currentTarget = { type: 'channel', id: 'general', name: '# general' };
+    let currentGroupObj = null;
+    let allUsersCache = [];
+    let selectedSearchIndex = -1;
+    let attachedFile = null;
+    let renderedMsgIds = new Set();
+    let messagesCache = {};
+    let activeReplyTo = null;
+
+    const QUICK_EMOJIS = ['👍', '❤️', '🚀', '😂', '🔥'];
+
+    function saveSession(userObj) {
+      const dataStr = JSON.stringify(userObj);
+      document.cookie = `landon_session=${encodeURIComponent(dataStr)}; max-age=2592000; path=/; SameSite=Lax`;
+      try { localStorage.setItem('landon_session', dataStr); } catch(e){}
+    }
+
+    function getSavedSession() {
+      try {
+        const local = localStorage.getItem('landon_session');
+        if (local) return JSON.parse(local);
+      } catch(e){}
+
+      const nameEQ = "landon_session=";
+      const ca = document.cookie.split(';');
+      for(let i=0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) {
+          return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+        }
+      }
+      return null;
+    }
+
+    function clearSavedSession() {
+      document.cookie = "landon_session=; max-age=0; path=/;";
+      try { localStorage.removeItem('landon_session'); } catch(e){}
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = getSavedSession();
+      if (saved && saved.email && saved.username) {
+        currentUser = saved;
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('loading-screen').style.display = 'block';
+
+        setTimeout(() => {
+          document.getElementById('loading-screen').style.display = 'none';
+          document.getElementById('app-screen').style.display = 'grid';
+          document.getElementById('current-user-display').innerText = currentUser.username;
+
+          if (currentUser.isAdmin) {
+            document.getElementById('admin-gear-btn').style.display = 'inline-block';
+          }
+
+          initApp();
+        }, 800);
+      }
+    });
+
+    function submitEmail() {
+      const email = document.getElementById('email-input').value.trim().toLowerCase();
+      const errorDiv = document.getElementById('auth-error');
+
+      if (!email.endsWith('@landon.net')) {
+        errorDiv.style.display = 'block';
+        errorDiv.innerText = "You need to use a @landon.net email.";
+        return;
+      }
+
+      errorDiv.style.display = 'none';
+      tempEmail = email;
+
+      google.script.run
+        .withFailureHandler(err => {
+          errorDiv.style.display = 'block';
+          errorDiv.innerText = "Server Error: " + (err.message || err);
+        })
+        .withSuccessHandler(res => {
+          if (!res.success) {
+            errorDiv.style.display = 'block';
+            errorDiv.innerText = res.error;
+            return;
+          }
+
+          document.getElementById('step-email-box').style.display = 'none';
+
+          if (res.isNewUser) {
+            document.getElementById('step-setup-box').style.display = 'block';
+          } else {
+            document.getElementById('step-passcode-box').style.display = 'block';
+          }
+        }).checkUserStatus(email);
+    }
+
+    function submitPasscode(isSetup) {
+      const errorDiv = document.getElementById('auth-error');
+      let passcode = '';
+
+      if (isSetup) {
+        passcode = document.getElementById('setup-passcode').value;
+        const confirmPass = document.getElementById('setup-passcode-confirm').value;
+
+        if (passcode !== confirmPass) {
+          errorDiv.style.display = 'block';
+          errorDiv.innerText = "Passcodes do not match. Please re-type both.";
+          return;
+        }
+      } else {
+        passcode = document.getElementById('login-passcode').value;
+      }
+
+      google.script.run
+        .withFailureHandler(err => {
+          errorDiv.style.display = 'block';
+          errorDiv.innerText = "Server Error: " + (err.message || err);
+        })
+        .withSuccessHandler(res => {
+          if (!res.success) {
+            errorDiv.style.display = 'block';
+            errorDiv.innerText = res.error;
+            return;
+          }
+
+          currentUser = res;
+          saveSession(currentUser);
+
+          document.getElementById('auth-screen').style.display = 'none';
+          document.getElementById('loading-screen').style.display = 'block';
+
+          setTimeout(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'grid';
+            document.getElementById('current-user-display').innerText = currentUser.username;
+
+            if (currentUser.isAdmin) {
+              document.getElementById('admin-gear-btn').style.display = 'inline-block';
+            }
+
+            initApp();
+          }, 3000);
+        }).authenticatePasscode(tempEmail, passcode, isSetup);
+    }
+
+    function initApp() {
+      loadUsersCache();
+      loadGroups();
+      loadDMs();
+      loadMessages();
+      setInterval(loadMessages, 3000);
+      setInterval(loadDMs, 4000);
+      setInterval(loadGroups, 4000);
+    }
+
+    function logout() {
+      clearSavedSession();
+      window.location.reload();
+    }
+
+    function loadUsersCache() {
+      google.script.run.withSuccessHandler(users => { allUsersCache = users; }).getAllUsers();
+    }
+
+    function loadDMs() {
+      if (!currentUser) return;
+      google.script.run.withSuccessHandler(dms => {
+        const container = document.getElementById('dms-list');
+        container.innerHTML = '';
+        dms.forEach(dm => {
+          const item = document.createElement('div');
+          item.className = 'chat-item' + (currentTarget.type === 'dm' && currentTarget.id === dm.email ? ' active' : '');
+          item.innerText = `@ ${dm.username}`;
+          item.onclick = () => selectTarget('dm', dm.email, `@ ${dm.username}`);
+          container.appendChild(item);
+        });
+      }).getUserDMs(currentUser.email);
+    }
+
+    function handleUserSearch() {
+      const query = document.getElementById('user-search').value.trim().toLowerCase();
+      const listDiv = document.getElementById('autocomplete-list');
+      listDiv.innerHTML = '';
+      selectedSearchIndex = -1;
+
+      if (!query) { listDiv.style.display = 'none'; return; }
+
+      const matches = allUsersCache.filter(u => u.username.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+      if (matches.length === 0) { listDiv.style.display = 'none'; return; }
+
+      matches.forEach((u, idx) => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item' + (idx === 0 ? ' selected' : '');
+        item.innerHTML = `<span><strong>${escapeHtml(u.username)}</strong></span><span style="color:var(--muted); font-size:0.75rem;">${escapeHtml(u.email)}</span>`;
+        item.onclick = () => selectUserDM(u);
+        listDiv.appendChild(item);
+      });
+
+      if (matches.length > 0) selectedSearchIndex = 0;
+      listDiv.style.display = 'block';
+    }
+
+    function handleSearchKeyDown(e) {
+      const listDiv = document.getElementById('autocomplete-list');
+      const items = listDiv.getElementsByClassName('autocomplete-item');
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (items.length > 0 && selectedSearchIndex >= 0) items[selectedSearchIndex].click();
+      }
+    }
+
+    function selectUserDM(user) {
+      document.getElementById('autocomplete-list').style.display = 'none';
+      document.getElementById('user-search').value = '';
+      selectTarget('dm', user.email, `@ ${user.username}`);
+      loadDMs();
+    }
+
+    function selectTarget(type, id, name) {
+      currentTarget = { type: type, id: id, name: name };
+      document.getElementById('chat-title').innerText = name;
+      renderedMsgIds.clear();
+      messagesCache = {};
+      document.getElementById('messages-container').innerHTML = '';
+      cancelReply();
+
+      if (type === 'group') {
+        document.getElementById('group-options-btn').style.display = 'inline-block';
+      } else {
+        document.getElementById('group-options-btn').style.display = 'none';
+      }
+
+      loadMessages();
+    }
+
+    function loadMessages() {
+      if (!currentUser) return;
+      google.script.run.withSuccessHandler(renderMessages).getChatHistory(currentTarget.type, currentTarget.id, currentUser.email);
+    }
+
+    function renderMessages(messages) {
+      const container = document.getElementById('messages-container');
+
+      messages.forEach(msg => {
+        messagesCache[msg.id] = msg;
+        if (!renderedMsgIds.has(msg.id)) {
+          renderedMsgIds.add(msg.id);
+          appendSingleMessage(msg);
+
+          const isSelf = String(msg.email).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase();
+          if (!isSelf) {
+            notifyNewMessage(msg);
+          }
+        } else {
+          updateMessageReactionsDOM(msg);
+        }
+      });
+    }
+
+    function updateMessageReactionsDOM(msg) {
+      const msgDiv = document.getElementById(msg.id);
+      if (!msgDiv) return;
+      const reactionsBar = msgDiv.querySelector('.reactions-bar');
+      if (reactionsBar) {
+        reactionsBar.innerHTML = renderReactionsHTML(msg.reactions, msg.id);
+      }
+    }
+
+    function renderReactionsHTML(reactions, msgId) {
+      let html = '';
+      for (const emoji of QUICK_EMOJIS) {
+        const users = reactions[emoji] || [];
+        const count = users.length;
+        const hasReacted = users.map(e => e.toLowerCase()).includes(currentUser.email.toLowerCase());
+        if (count > 0 || hasReacted) {
+          html += `<button class="reaction-pill ${hasReacted ? 'reacted' : ''}" onclick="toggleReaction('${msgId}', '${emoji}')">${emoji} ${count > 0 ? count : ''}</button>`;
+        }
+      }
+      return html;
+    }
+
+    function enableNotificationsWithTest() {
+      playNotificationSound();
+
+      if (!("Notification" in window)) {
+        alert("Desktop notifications are not supported in this browser.");
+        return;
+      }
+
+      if (Notification.permission === "granted") {
+        sendTestNotification();
+      } else {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            sendTestNotification();
+          } else {
+            alert("Notification permission was denied. You can enable it in your browser settings.");
+          }
+        });
+      }
+    }
+
+    function sendTestNotification() {
+      new Notification("Notifications Enabled! 🔔", {
+        body: "You will now receive alerts for new messages from Coding Club members.",
+        icon: "https://www.google.com/favicon.ico"
+      });
+    }
+
+    function notifyNewMessage(msg) {
+      playNotificationSound();
+
+      if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+        new Notification(`New message from ${msg.username}`, {
+          body: msg.message || "Sent an attachment",
+          icon: "https://www.google.com/favicon.ico"
+        });
+      }
+
+      document.title = `💬 New Message - Landon Coding Club`;
+    }
+
+    function playNotificationSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch(e){}
+    }
+
+    window.addEventListener('focus', () => {
+      document.title = 'Landon Middle School Coding Club';
+    });
+
+    function appendSingleMessage(msg) {
+      const container = document.getElementById('messages-container');
+      const msgDiv = document.createElement('div');
+
+      const isSelf = String(msg.email).trim().toLowerCase() === String(currentUser.email).trim().toLowerCase();
+      const isOwnOrAdmin = isSelf || currentUser.isAdmin;
+
+      msgDiv.className = 'msg ' + (isSelf ? 'msg-own' : 'msg-other');
+      msgDiv.id = msg.id;
+
+      let fileHtml = '';
+      if (msg.fileName && msg.fileUrl) {
+        fileHtml = `<div class="file-attachment">📎 <a href="${msg.fileUrl}" target="_blank">${escapeHtml(msg.fileName)}</a></div>`;
+      } else if (msg.fileName) {
+        fileHtml = `<div class="file-attachment">📎 Uploading ${escapeHtml(msg.fileName)}...</div>`;
+      }
+
+      let replyQuoteHtml = '';
+      if (msg.replyToId) {
+        const originalMsg = messagesCache[msg.replyToId];
+        const origUser = originalMsg ? originalMsg.username : 'Someone';
+        const origText = originalMsg ? (originalMsg.message || 'Attachment') : 'Original message';
+        const firstLine = origText.split('\n')[0];
+        const snippet = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+
+        replyQuoteHtml = `
+          <div class="reply-quote" onclick="jumpToMessage('${msg.replyToId}')">
+            <div class="reply-quote-user">↩️ ${escapeHtml(origUser)}</div>
+            <div class="reply-quote-text">${escapeHtml(snippet)}</div>
+          </div>
+        `;
+      }
+
+      let reactionsHtml = renderReactionsHTML(msg.reactions || {}, msg.id);
+
+      msgDiv.innerHTML = `
+        <div class="msg-header">
+          ${isOwnOrAdmin && !isSelf ? `<button class="delete-btn" onclick="deleteMsg('${msg.id}')">🗑️</button>` : ''}
+          <span class="msg-username">${isSelf ? 'You' : escapeHtml(msg.username)}</span>
+          <span>${new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+          ${isSelf ? `<button class="delete-btn" onclick="deleteMsg('${msg.id}')">🗑️</button>` : ''}
+        </div>
+        <div class="msg-body">
+          ${replyQuoteHtml}
+          ${escapeHtml(msg.message)}
+          ${fileHtml}
+
+          <div class="action-row">
+            <button class="action-btn" onclick="startReply('${msg.id}')">↩️ Reply</button>
+            <button class="action-btn" onclick="toggleQuickEmojiPicker('${msg.id}')">😀 React</button>
+          </div>
+          <div id="emoji-picker-${msg.id}" style="display:none; gap:4px; margin-top:4px;">
+            ${QUICK_EMOJIS.map(e => `<button class="action-btn" style="font-size:1rem;" onclick="toggleReaction('${msg.id}', '${e}')">${e}</button>`).join('')}
+          </div>
+
+          <div class="reactions-bar">${reactionsHtml}</div>
+        </div>
+      `;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function toggleQuickEmojiPicker(msgId) {
+      const picker = document.getElementById(`emoji-picker-${msgId}`);
+      if (picker) {
+        picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex';
+      }
+    }
+
+    function toggleReaction(msgId, emoji) {
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          if (messagesCache[msgId]) {
+            messagesCache[msgId].reactions = res.reactions;
+            updateMessageReactionsDOM(messagesCache[msgId]);
+          }
+        }
+      }).toggleReaction(msgId, emoji, currentUser.email);
+    }
+
+    function startReply(msgId) {
+      const originalMsg = messagesCache[msgId];
+      if (!originalMsg) return;
+
+      activeReplyTo = { id: msgId, username: originalMsg.username, message: originalMsg.message || 'Attachment' };
+      const firstLine = activeReplyTo.message.split('\n')[0];
+      const snippet = firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
+
+      document.getElementById('replying-to-user').innerText = activeReplyTo.username;
+      document.getElementById('replying-to-snippet').innerText = snippet;
+      document.getElementById('reply-preview-bar').style.display = 'flex';
+      document.getElementById('msg-input').focus();
+    }
+
+    function cancelReply() {
+      activeReplyTo = null;
+      document.getElementById('reply-preview-bar').style.display = 'none';
+    }
+
+    function jumpToMessage(msgId) {
+      const el = document.getElementById(msgId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('highlight-msg');
+        setTimeout(() => el.classList.remove('highlight-msg'), 1500);
+      }
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text && !attachedFile) return;
+
+      const tempId = "msg_" + new Date().getTime();
+      const timestamp = new Date().toISOString();
+      const replyToId = activeReplyTo ? activeReplyTo.id : "";
+
+      const tempMsg = {
+        id: tempId,
+        timestamp: timestamp,
+        email: currentUser.email,
+        username: currentUser.username,
+        message: text,
+        fileName: attachedFile ? attachedFile.name : "",
+        fileUrl: "",
+        reactions: {},
+        replyToId: replyToId
+      };
+
+      messagesCache[tempId] = tempMsg;
+      renderedMsgIds.add(tempId);
+      appendSingleMessage(tempMsg);
+
+      const payload = {
+        id: tempId,
+        timestamp: timestamp,
+        email: currentUser.email,
+        username: currentUser.username,
+        targetType: currentTarget.type,
+        targetId: currentTarget.id,
+        message: text,
+        file: attachedFile,
+        replyToId: replyToId
+      };
+
+      input.value = '';
+      attachedFile = null;
+      cancelReply();
+
+      google.script.run.withSuccessHandler(res => {
+        loadDMs();
+        loadGroups();
+        if (res.fileUrl) {
+          loadMessages();
+        }
+      }).sendMessage(payload);
+    }
+
+    function deleteMsg(msgId) {
+      if (confirm("Delete message?")) {
+        const el = document.getElementById(msgId);
+        if (el) el.remove();
+        google.script.run.withSuccessHandler(() => loadMessages()).deleteMessage(msgId, currentUser.email);
+      }
+    }
+
+    function openCreateGroupModal() { document.getElementById('group-modal').style.display = 'flex'; }
+    function openChangePassModal() { document.getElementById('change-pass-modal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function submitCreateGroup() {
+      const name = document.getElementById('new-group-name').value.trim();
+      if (!name) return;
+      google.script.run.withSuccessHandler(() => {
+        closeModal('group-modal');
+        document.getElementById('new-group-name').value = '';
+        loadGroups();
+      }).createGroup(name, currentUser.email);
+    }
+
+    function submitChangePass() {
+      const curr = document.getElementById('current-pass-input').value;
+      const next = document.getElementById('new-pass-input').value;
+
+      if (!curr || !next) return;
+
+      google.script.run.withSuccessHandler(res => {
+        alert(res.success ? "Passcode updated successfully!" : res.error);
+        if (res.success) {
+          closeModal('change-pass-modal');
+          document.getElementById('current-pass-input').value = '';
+          document.getElementById('new-pass-input').value = '';
+        }
+      }).changeUserPassword(currentUser.email, curr, next);
+    }
+
+    function loadGroups() {
+      if (!currentUser) return;
+      google.script.run.withSuccessHandler(groups => {
+        const container = document.getElementById('groups-list');
+        container.innerHTML = '';
+        groups.forEach(g => {
+          if (g.groupId === currentTarget.id) currentGroupObj = g;
+          const item = document.createElement('div');
+          item.className = 'chat-item' + (currentTarget.type === 'group' && currentTarget.id === g.groupId ? ' active' : '');
+          item.innerText = `🔒 ${g.name}`;
+          item.onclick = () => {
+            currentGroupObj = g;
+            selectTarget('group', g.groupId, `🔒 ${g.name}`);
+          };
+          container.appendChild(item);
+        });
+      }).getGroups(currentUser.email);
+    }
+
+    function openGroupManageModal() {
+      if (!currentGroupObj) return;
+      document.getElementById('manage-group-modal').style.display = 'flex';
+      document.getElementById('rename-group-input').value = currentGroupObj.name;
+
+      const membersListDiv = document.getElementById('group-members-list');
+      membersListDiv.innerHTML = currentGroupObj.members.map(m => `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span>• ${escapeHtml(m.split('@')[0].toUpperCase())} (${escapeHtml(m)})</span>
+          <button class="delete-btn" style="opacity:1;" onclick="submitRemoveGroupMember('${m}')">Remove</button>
+        </div>
+      `).join('');
+
+      const isCreatorOrAdmin = (currentGroupObj.createdBy === currentUser.email) || currentUser.isAdmin;
+      document.getElementById('delete-group-container').style.display = isCreatorOrAdmin ? 'block' : 'none';
+    }
+
+    function submitDeleteGroup() {
+      if (!currentGroupObj) return;
+      if (confirm(`Are you sure you want to delete "${currentGroupObj.name}"? This action cannot be undone.`)) {
+        google.script.run.withSuccessHandler(res => {
+          if (res.success) {
+            closeModal('manage-group-modal');
+            selectTarget('channel', 'general', '# general');
+            loadGroups();
+          } else {
+            alert(res.error);
+          }
+        }).deleteGroup(currentGroupObj.groupId, currentUser.email);
+      }
+    }
+
+    function submitRenameGroup() {
+      const newName = document.getElementById('rename-group-input').value.trim();
+      if (!newName || !currentGroupObj) return;
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          closeModal('manage-group-modal');
+          loadGroups();
+          selectTarget('group', currentGroupObj.groupId, `🔒 ${newName}`);
+        } else {
+          alert(res.error);
+        }
+      }).renameGroup(currentGroupObj.groupId, newName, currentUser.email);
+    }
+
+    function submitAddGroupMember() {
+      const email = document.getElementById('add-member-email').value.trim();
+      if (!email || !currentGroupObj) return;
+
+      if (!email.endsWith('@landon.net')) {
+        alert("Please enter a valid @landon.net email address.");
+        return;
+      }
+
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          document.getElementById('add-member-email').value = '';
+          closeModal('manage-group-modal');
+          loadGroups();
+        } else {
+          alert(res.error);
+        }
+      }).addGroupMember(currentGroupObj.groupId, email, currentUser.email);
+    }
+
+    function submitRemoveGroupMember(memberEmail) {
+      if (!currentGroupObj) return;
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          closeModal('manage-group-modal');
+          loadGroups();
+        } else {
+          alert(res.error);
+        }
+      }).removeGroupMember(currentGroupObj.groupId, memberEmail, currentUser.email);
+    }
+
+    function openAdminModal() {
+      document.getElementById('admin-modal').style.display = 'flex';
+      loadAdminDashboardData();
+    }
+
+    function loadAdminDashboardData() {
+      google.script.run.withSuccessHandler(data => {
+        if (!data.success) return;
+
+        document.getElementById('admin-users-list').innerHTML = data.users.map(u => `
+          <div class="admin-list-item">
+            <span>• <strong>${escapeHtml(u.username)}</strong> (${escapeHtml(u.email)})</span>
+            <button class="delete-btn" style="opacity:1;" onclick="submitAdminDeleteUser('${u.email}')">Delete</button>
+          </div>
+        `).join('');
+
+        document.getElementById('admin-groups-list').innerHTML = data.groups.map(g => `
+          <div class="admin-list-item">
+            <span>🔒 <strong>${escapeHtml(g.name)}</strong> (Created by ${escapeHtml(g.createdBy)})</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-primary" style="width:auto; padding:4px 8px; font-size:0.75rem;" onclick="inspectAdminChat('group', '${g.groupId}', '${escapeHtml(g.name)}')">View Chat 👁️</button>
+              <button class="delete-btn" style="opacity:1;" onclick="submitAdminDeleteGroup('${g.groupId}', '${escapeHtml(g.name)}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('admin-dms-list').innerHTML = data.dms.map(dm => `
+          <div class="admin-list-item" onclick="inspectAdminDMChat('${dm.user1}', '${dm.user2}', '@ ${dm.user1Name} & @ ${dm.user2Name}')" style="cursor:pointer;">
+            <span>💬 <strong>${escapeHtml(dm.user1Name)}</strong> ↔ <strong>${escapeHtml(dm.user2Name)}</strong></span>
+            <span style="color:var(--green); font-size:0.75rem;">View Chat 👁️</span>
+          </div>
+        `).join('');
+      }).getAdminDashboardData(currentUser.email);
+    }
+
+    function submitAdminDeleteUser(targetEmail) {
+      if (confirm(`Are you sure you want to delete user ${targetEmail}?`)) {
+        google.script.run.withSuccessHandler(res => {
+          if (res.success) {
+            alert("User deleted successfully.");
+            loadAdminDashboardData();
+            loadUsersCache();
+          } else {
+            alert(res.error);
+          }
+        }).adminDeleteUser(currentUser.email, targetEmail);
+      }
+    }
+
+    function submitAdminDeleteGroup(groupId, groupName) {
+      if (confirm(`Are you sure you want to delete group "${groupName}"?`)) {
+        google.script.run.withSuccessHandler(res => {
+          if (res.success) {
+            alert("Group deleted successfully.");
+            loadAdminDashboardData();
+            loadGroups();
+          } else {
+            alert(res.error);
+          }
+        }).deleteGroup(groupId, currentUser.email);
+      }
+    }
+
+    function inspectAdminChat(type, id, title) {
+      document.getElementById('admin-viewer-title').innerText = "Read-Only: " + title;
+      document.getElementById('admin-chat-modal').style.display = 'flex';
+
+      google.script.run.withSuccessHandler(messages => {
+        renderAdminChatViewer(messages);
+      }).getChatHistory(type, id, currentUser.email);
+    }
+
+    function inspectAdminDMChat(user1, user2, title) {
+      document.getElementById('admin-viewer-title').innerText = "Read-Only DM: " + title;
+      document.getElementById('admin-chat-modal').style.display = 'flex';
+
+      google.script.run.withSuccessHandler(messages => {
+        renderAdminChatViewer(messages);
+      }).getAdminDMMessages(currentUser.email, user1, user2);
+    }
+
+    function renderAdminChatViewer(messages) {
+      const container = document.getElementById('admin-chat-body');
+      if (!messages || messages.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); text-align:center;">No messages in this chat yet.</div>';
+        return;
+      }
+
+      container.innerHTML = messages.map(m => `
+        <div>
+          <div style="font-size:0.75rem; color:var(--muted); margin-bottom:2px;">
+            <strong style="color:var(--green);">${escapeHtml(m.username)}</strong> • ${new Date(m.timestamp).toLocaleString()}
+          </div>
+          <div style="background:var(--panel); padding:8px 12px; border-radius:6px; border:1px solid var(--border);">
+            ${escapeHtml(m.message)}
+            ${m.fileUrl ? `<div style="margin-top:4px;"><a href="${m.fileUrl}" target="_blank" style="color:var(--green);">📎 ${escapeHtml(m.fileName)}</a></div>` : ''}
+          </div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function submitAdminResetPass() {
+      const targetEmail = document.getElementById('reset-user-email').value.trim();
+      const newPass = document.getElementById('reset-user-pass').value;
+
+      google.script.run.withSuccessHandler(res => {
+        alert(res.success ? "Passcode reset successfully!" : res.error);
+        if (res.success) {
+          document.getElementById('reset-user-email').value = '';
+          document.getElementById('reset-user-pass').value = '';
+        }
+      }).adminResetPassword(currentUser.email, targetEmail, newPass);
+    }
+
+    function escapeHtml(text) { return (text || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = evt => {
+        attachedFile = { name: file.name, mimeType: file.type || 'application/octet-stream', base64: evt.target.result.split(',')[1] };
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
